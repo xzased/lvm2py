@@ -13,32 +13,15 @@
 #You should have received a copy of the GNU General Public License
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
-from ctypes.util import find_library
-from ctypes import *
-from .exception import HandleError
-
-
-lib = find_library("lvm2app")
-
-if not lib:
-    raise Exception("LVM library not found.")
-
-lvmlib = CDLL(lib)
-
-class lvm(Structure):
+# Handle exception
+class HandleError(Exception):
     pass
 
-lvm_t = POINTER(lvm)
+class CloseError(Exception):
+    pass
 
-# Initialize library
-lvm_init = lvmlib.lvm_init
-lvm_init.argtypes = [c_char_p]
-lvm_init.restype = lvm_t
+class VolumeGroupError(Exception):
+    pass
 
-# Set lvm handle
-handle = lvm_init("/etc/lvm")
-if not type(handle) == lvm_t:
-    raise HandleError("Failed to initialize LVM handle.")
-
-
-from .vg import VolumeGroup
+class CommitError(Exception):
+    pass
