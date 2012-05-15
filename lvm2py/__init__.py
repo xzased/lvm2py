@@ -42,3 +42,4 @@ if not type(handle) == lvm_t:
 
 
 from .vg import VolumeGroup
+from .pv import PhysicalVolume

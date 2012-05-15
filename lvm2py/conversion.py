@@ -16,10 +16,15 @@
 from ctypes import *
 from . import lvmlib, lvm_t
 
+class volume_group(Structure):
+    pass
+
+vg_t = POINTER(volume_group)
+
 class physical_volume(Structure):
     pass
 
-vg_t = POINTER(physical_volume)
+pv_t = POINTER(physical_volume)
 
 class dm_list(Structure):
     pass
@@ -33,6 +38,14 @@ class lvm_str_list(Structure):
     ]
 
 lvm_str_list_t = lvm_str_list
+
+class lvm_pv_list(Structure):
+    _fields_ = [
+        ('list', dm_list),
+        ('pv', pv_t),
+    ]
+
+lvm_pv_list_t = lvm_pv_list
 
 version = lvmlib.lvm_library_get_version
 version.restype = c_char_p
@@ -99,3 +112,11 @@ lvm_vg_get_max_lv.restype = c_ulonglong
 lvm_vgname_from_device = lvmlib.lvm_vgname_from_device
 lvm_vgname_from_device.argtypes = [vg_t, c_char_p]
 lvm_vgname_from_device.restype = c_char_p
+lvm_vg_list_pvs = lvmlib.lvm_vg_list_pvs
+lvm_vg_list_pvs.argtypes = [vg_t]
+lvm_vg_list_pvs.restype = POINTER(dm_list)
+
+# PV Functions
+lvm_pv_get_name = lvmlib.lvm_pv_get_name
+lvm_pv_get_name.argtypes = [pv_t]
+lvm_pv_get_name.restype = c_char_p

@@ -15,6 +15,8 @@
 
 from conversion import *
 from exception import *
+from pv import PhysicalVolume
+from ctypes import cast
 from . import handle
 import os
 
@@ -106,3 +108,19 @@ class VolumeGroup(object):
         ext = lvm_vg_extend(self.__vgh, device)
         if ext != 0:
             raise VolumeGroupError("Failed to extend Volume Group.")
+
+    def pv_list(self):
+        pv_list = []
+        pv_handles = lvm_vg_list_pvs(self.__vgh)
+        if dm_list_empty(pv_handles):
+            return pv_list
+        pvh = pv_handles.contents.n
+        while pvh:
+            c = cast(pvh, POINTER(lvm_pv_list))
+            pv = PhysicalVolume(c.contents.pv)
+            pv_list.append(pv)
+            if dm_list_end(pv_handles, pvh):
+                # end of linked list
+                break
+            pvh = pvh.contents.n
+        return pv_list
