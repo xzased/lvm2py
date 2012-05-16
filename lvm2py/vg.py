@@ -104,10 +104,17 @@ class VolumeGroup(object):
 
     def add_pv(self, device):
         if not os.path.exists(device):
-            raise ValueError("%s does not exist.")
+            raise ValueError("%s does not exist." % device)
         ext = lvm_vg_extend(self.__vgh, device)
         if ext != 0:
             raise VolumeGroupError("Failed to extend Volume Group.")
+
+    def remove_pv(self, device):
+        if not os.path.exists(device):
+            raise ValueError("%s does not exist." % device)
+        ext = lvm_vg_reduce(self.__vgh, device)
+        if ext != 0:
+            raise VolumeGroupError("Failed to remove %s." % device)
 
     def pv_list(self):
         pv_list = []
