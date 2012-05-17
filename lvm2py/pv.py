@@ -10,7 +10,7 @@ from .exception import *
 class PhysicalVolume(object):
     def __init__(self, pvh):
         self.__pvh = pvh
-        if not type(self.__pvh) == pv_t:
+        if not bool(self.__pvh):
             raise HandleError("Failed to initialize PV Handle.")
 
     @property

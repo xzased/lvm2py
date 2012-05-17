@@ -13,8 +13,21 @@
 #You should have received a copy of the GNU General Public License
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
+from ctypes.util import find_library
 from ctypes import *
-from . import lvmlib, lvm_t
+
+
+lib = find_library("lvm2app")
+
+if not lib:
+    raise Exception("LVM library not found.")
+
+lvmlib = CDLL(lib)
+
+class lvm(Structure):
+    pass
+
+lvm_t = POINTER(lvm)
 
 class volume_group(Structure):
     pass
@@ -25,6 +38,11 @@ class physical_volume(Structure):
     pass
 
 pv_t = POINTER(physical_volume)
+
+class logical_volume(Structure):
+    pass
+
+lv_t = POINTER(logical_volume)
 
 class dm_list(Structure):
     pass
@@ -47,6 +65,20 @@ class lvm_pv_list(Structure):
 
 lvm_pv_list_t = lvm_pv_list
 
+class lvm_lv_list(Structure):
+    _fields_ = [
+        ('list', dm_list),
+        ('lv', lv_t),
+    ]
+
+lvm_lv_list_t = lvm_lv_list
+
+# Initialize library
+lvm_init = lvmlib.lvm_init
+lvm_init.argtypes = [c_char_p]
+lvm_init.restype = lvm_t
+
+# some stuff
 version = lvmlib.lvm_library_get_version
 version.restype = c_char_p
 lvm_quit = lvmlib.lvm_quit
@@ -117,6 +149,9 @@ lvm_vgname_from_device.restype = c_char_p
 lvm_vg_list_pvs = lvmlib.lvm_vg_list_pvs
 lvm_vg_list_pvs.argtypes = [vg_t]
 lvm_vg_list_pvs.restype = POINTER(dm_list)
+lvm_vg_list_lvs = lvmlib.lvm_vg_list_lvs
+lvm_vg_list_lvs.argtypes = [vg_t]
+lvm_vg_list_lvs.restype = POINTER(dm_list)
 
 # PV Functions
 lvm_pv_get_name = lvmlib.lvm_pv_get_name
@@ -137,3 +172,19 @@ lvm_pv_get_size.restype = c_ulonglong
 lvm_pv_get_free = lvmlib.lvm_pv_get_free
 lvm_pv_get_free.argtypes = [pv_t]
 lvm_pv_get_free.restype = c_ulonglong
+lvm_vg_create_lv_linear = lvmlib.lvm_vg_create_lv_linear
+lvm_vg_create_lv_linear.argtypes = [vg_t, c_char_p, c_ulonglong]
+lvm_vg_create_lv_linear.restype = lv_t
+lvm_vg_remove_lv = lvmlib.lvm_vg_remove_lv
+lvm_vg_remove_lv.argtypes = [lv_t]
+
+# LV Functions
+lvm_lv_get_name = lvmlib.lvm_lv_get_name
+lvm_lv_get_name.argtypes = [lv_t]
+lvm_lv_get_name.restype = c_char_p
+lvm_lv_get_uuid = lvmlib.lvm_lv_get_uuid
+lvm_lv_get_uuid.argtypes = [lv_t]
+lvm_lv_get_uuid.restype = c_char_p
+lvm_lv_get_size = lvmlib.lvm_lv_get_size
+lvm_lv_get_size.argtypes = [lv_t]
+lvm_lv_get_size.restype = c_ulonglong
