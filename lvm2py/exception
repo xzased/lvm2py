@@ -16,15 +16,3 @@
 # Handle exception
 class HandleError(Exception):
     pass
-
-class CloseError(Exception):
-    pass
-
-class VolumeGroupError(Exception):
-    pass
-
-class LogicalVolumeError(Exception):
-    pass
-
-class CommitError(Exception):
-    pass
