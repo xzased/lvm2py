@@ -12,9 +12,10 @@ import weakref
 class PhysicalVolume(object):
     __refs__ = defaultdict(list)
 
-    def __init__(self, pvh):
+    def __init__(self, pvh, vg, uuid=None):
         self.__refs__[self.__class__].append(weakref.ref(self))
         self.__pvh = pvh
+        self.__vg = vg
         if not bool(self.__pvh):
             raise HandleError("Failed to initialize PV Handle.")
 
@@ -28,6 +29,10 @@ class PhysicalVolume(object):
     @property
     def handle(self):
         return self.__pvh
+
+    @property
+    def vg_name(self):
+        return self.__vg
 
     @property
     @handleDecorator()

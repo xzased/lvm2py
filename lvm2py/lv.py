@@ -8,9 +8,10 @@ import weakref
 class LogicalVolume(object):
     __refs__ = defaultdict(list)
 
-    def __init__(self, lvh):
+    def __init__(self, lvh, vg, uuid=None):
         self.__refs__[self.__class__].append(weakref.ref(self))
         self.__lvh = lvh
+        self.__vg = vg
         if not bool(self.__lvh):
             raise HandleError("Failed to initialize LV Handle.")
 
@@ -24,6 +25,10 @@ class LogicalVolume(object):
     @property
     def handle(self):
         return self.__lvh
+
+    @property
+    def vg_name(self):
+        return self.__vg
 
     @property
     @handleDecorator()

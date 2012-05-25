@@ -47,7 +47,7 @@ lv_t = POINTER(logical_volume)
 class dm_list(Structure):
     pass
 
-dm_list._fields_ = [('n', POINTER(dm_list)), ('p', POINTER(dm_list))]
+dm_list._fields_ = [('p', POINTER(dm_list)), ('n', POINTER(dm_list))]
 
 class lvm_str_list(Structure):
     _fields_ = [
@@ -95,6 +95,12 @@ dm_list_start = lvmlib.dm_list_start
 dm_list_start.argtypes = [POINTER(dm_list), POINTER(dm_list)]
 dm_list_end = lvmlib.dm_list_end
 dm_list_end.argtypes = [POINTER(dm_list), POINTER(dm_list)]
+dm_list_first = lvmlib.dm_list_first
+dm_list_first.argtypes = [POINTER(dm_list)]
+dm_list_first.restype = POINTER(dm_list)
+dm_list_next = lvmlib.dm_list_next
+dm_list_next.argtypes = [POINTER(dm_list), POINTER(dm_list)]
+dm_list_next.restype = POINTER(dm_list)
 
 # VG Functions
 lvm_vg_create = lvmlib.lvm_vg_create
@@ -188,6 +194,9 @@ lvm_pv_get_size.restype = c_ulonglong
 lvm_pv_get_free = lvmlib.lvm_pv_get_free
 lvm_pv_get_free.argtypes = [pv_t]
 lvm_pv_get_free.restype = c_ulonglong
+lvm_pv_from_uuid = lvmlib.lvm_pv_from_uuid
+lvm_pv_from_uuid.argtypes = [vg_t, c_char_p]
+lvm_pv_from_uuid.restype = pv_t
 
 # LV Functions
 lvm_lv_get_name = lvmlib.lvm_lv_get_name
@@ -209,3 +218,6 @@ lvm_lv_activate = lvmlib.lvm_lv_activate
 lvm_lv_activate.argtypes = [lv_t]
 lvm_lv_deactivate = lvmlib.lvm_lv_deactivate
 lvm_lv_deactivate.argtypes = [lv_t]
+lvm_lv_from_uuid = lvmlib.lvm_lv_from_uuid
+lvm_lv_from_uuid.argtypes = [vg_t, c_char_p]
+lvm_lv_from_uuid.restype = lv_t

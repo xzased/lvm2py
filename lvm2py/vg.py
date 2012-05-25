@@ -29,6 +29,7 @@ class VolumeGroup(object):
         self.__refs__[self.__class__].append(weakref.ref(self))
         self.__name = None
         self.__vgh = None
+        self.__mode = mode
         self.__handle = handle
         if new:
             self.__name = new
@@ -57,6 +58,10 @@ class VolumeGroup(object):
     @property
     def handle(self):
         return self.__vgh
+
+    @property
+    def mode(self):
+        return self.__mode
 
     @property
     @handleDecorator()
@@ -183,7 +188,7 @@ class VolumeGroup(object):
         pvh = pv_handles.contents.n
         while pvh:
             c = cast(pvh, POINTER(lvm_pv_list))
-            pv = PhysicalVolume(c.contents.pv)
+            pv = PhysicalVolume(c.contents.pv, self.name)
             pv_list.append(pv)
             if dm_list_end(pv_handles, pvh):
                 # end of linked list
@@ -200,7 +205,7 @@ class VolumeGroup(object):
         lvh = lv_handles.contents.n
         while lvh:
             c = cast(lvh, POINTER(lvm_lv_list))
-            lv = LogicalVolume(c.contents.lv)
+            lv = LogicalVolume(c.contents.lv, self.name)
             lv_list.append(lv)
             if dm_list_end(lv_handles, lvh):
                 # end of linked list
