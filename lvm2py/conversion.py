@@ -197,6 +197,9 @@ lvm_pv_get_free.restype = c_ulonglong
 lvm_pv_from_uuid = lvmlib.lvm_pv_from_uuid
 lvm_pv_from_uuid.argtypes = [vg_t, c_char_p]
 lvm_pv_from_uuid.restype = pv_t
+lvm_pv_from_name = lvmlib.lvm_pv_from_name
+lvm_pv_from_name.argtypes = [vg_t, c_char_p]
+lvm_pv_from_name.restype = pv_t
 
 # LV Functions
 lvm_lv_get_name = lvmlib.lvm_lv_get_name
@@ -221,3 +224,6 @@ lvm_lv_deactivate.argtypes = [lv_t]
 lvm_lv_from_uuid = lvmlib.lvm_lv_from_uuid
 lvm_lv_from_uuid.argtypes = [vg_t, c_char_p]
 lvm_lv_from_uuid.restype = lv_t
+lvm_lv_from_name = lvmlib.lvm_lv_from_name
+lvm_lv_from_name.argtypes = [vg_t, c_char_p]
+lvm_lv_from_name.restype = lv_t

@@ -1,9 +1,24 @@
-from collections import defaultdict
-import weakref
-from .conversion import *
-from .exception import *
-from .util import *
-from .vg import VolumeGroup
+#This file is part of lvm2py.
+
+#lvm2py is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#lvm2py is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
+
+from ctypes import cast, c_ulonglong, c_ulong
+from conversion import *
+from exception import *
+from util import *
+from vg import VolumeGroup
+import os
 
 
 class LVM(object):
@@ -17,52 +32,77 @@ class LVM(object):
         from lvm2py import *
 
         lvm = LVM()
-
-    Without arguments, the class uses the default system directory, you can override
-    this by providing the path to the desired system directory::
-
-        from lvm2py import *
-
-        lvm = LVM("/my/system/dir")
-
-    *Args:*
-
-    *   path:   Alternative system directory.
-
-    *Raises:*
-
-    *   HandleError
-
-    .. note::
-
-       You can only create one instance of this class. Having multiple instances causes
-       an error on lvm since it fails to provide a working "handle" raising a memory
-       allocation problem. lvm2py keeps this from happening by raising a HandleError if
-       a working handle is found.
     """
-    __refs__ = defaultdict(list)
-
-    def __init__(self, path=''):
-        self.__refs__[self.__class__].append(weakref.ref(self))
+    def __init__(self):
         self.__handle = None
-        self.__path = path
-        inst = [i for i in self.get_instances()
-                            if i.handle is not None]
-        if len(inst) > 1:
-            raise HandleError("Found existing LVM handle.")
-        self.__handle = lvm_init(path)
-        if not bool(self.__handle):
-            raise HandleError("Failed to initialize LVM handle.")
+        self.__path = None
 
     @classmethod
-    def get_instances(cls):
+    def set_system_dir(self, path):
         """
-        Returns all instances of this class.
+        This class method overrides the default system directory::
+
+            from lvm2py import *
+
+            lvm = LVM()
+            lvm.set_system_dir("/path/to/dir")
+
+        .. note::
+
+            LVM probes the environment variable LVM_SYSTEM_DIR, if this is not set
+            it will use the default directory (usually /etc/lvm/) .
         """
-        for ref in cls.__refs__[cls]:
-            instance = ref()
-            if instance is not None:
-                yield instance
+        self.__path = path
+
+    def open(self):
+        """
+        Obtains the lvm handle. Usually you would never need to use this method unless
+        you are trying to do operations using the ctypes function wrappers in conversion.py
+
+        *Raises:*
+
+        *       HandleError
+        """
+        if not self.handle:
+            try:
+                path = self.system_dir
+            except AttributeError:
+                path = ''
+            self.__handle = lvm_init(path)
+            if not bool(self.__handle):
+                raise HandleError("Failed to initialize LVM handle.")
+
+    def close(self):
+        """
+        Closes the lvm handle. Usually you would never need to use this method unless
+        you are trying to do operations using the ctypes function wrappers in conversion.py
+
+        *Raises:*
+
+        *       HandleError
+        """
+        if self.handle:
+            q = lvm_quit(self.handle)
+            if q != 0:
+                raise HandleError("Failed to close LVM handle.")
+            self.__handle = None
+
+    def _close_vg(self, vgh):
+        cl = lvm_vg_close(vgh)
+        if cl != 0:
+            raise HandleError("Failed to close VG handle.")
+        self.close()
+
+    def _commit_vg(self, vgh):
+        com = lvm_vg_write(vgh)
+        if com != 0:
+            raise CommitError("Failed to add VolumeGroup.")
+
+    def _destroy_vg(self, vgh):
+        rm = lvm_vg_remove(vgh)
+        if rm == 0:
+            self._commit_vg(vgh)
+        self._close_vg(vgh)
 
     @property
     def handle(self):
@@ -75,12 +115,18 @@ class LVM(object):
     @property
     def system_dir(self):
         """
-        Returns the lvm handle provided by the api represented by a ctypes opaque
-        structure. After calling the close() method this will return None.
+        Returns the lvm system directory. Returns None if you have not set it using
+        the set_system_dir method.
         """
         return self.__path
 
-    @handleDecorator()
+    @property
+    def lvm_version(self):
+        """
+        Returns the lvm library version.
+        """
+        return version()
+
     def get_vg(self, name, mode="r"):
         """
         Returns an instance of VolumeGroup. The name parameter should be an existing
@@ -100,129 +146,121 @@ class LVM(object):
 
         *Args:*
 
-        *       name:   An existing volume group name.
-        *       mode:   "r" or "w" for read/write respectively. Default is "r".
+        *       name (str):     An existing volume group name.
+        *       mode (str):     "r" or "w" for read/write respectively. Default is "r".
 
         *Raises:*
 
         *       HandleError
         """
-        vg = VolumeGroup(self.handle, name=name, mode=mode)
+        vg = VolumeGroup(self, name=name, mode=mode)
         return vg
 
-    @handleDecorator()
-    def create_vg(self, name):
+    def create_vg(self, name, devices):
         """
-        Returns a new instance of VolumeGroup with the given name. This volume group
-        is only created in-memory. You must set parameters such as add physycal volumes
-        to save ::
+        Returns a new instance of VolumeGroup with the given name and added physycal
+        volumes (devices)::
 
             from lvm2py import *
 
             lvm = LVM()
-            vg = lvm.get_vg("myvg")
+            vg = lvm.create_vg("myvg", ["/dev/sdb1", "/dev/sdb2"])
 
-        To open a volume group with write permissions set the mode parameter to "w"::
+        *Args:*
+
+        *       name (str):             A volume group name.
+        *       devices (list):         A list of device paths.
+
+        *Raises:*
+
+        *       HandleError, CommitError, ValueError
+        """
+        self.open()
+        vgh = lvm_vg_create(self.handle, name)
+        if not bool(vgh):
+            self.close()
+            raise HandleError("Failed to create VG.")
+        for device in devices:
+            if not os.path.exists(device):
+                self._destroy_vg(vgh)
+                raise ValueError("%s does not exist." % device)
+            ext = lvm_vg_extend(vgh, device)
+            if ext != 0:
+                self._destroy_vg(vgh)
+                raise CommitError("Failed to extend Volume Group.")
+            try:
+                self._commit_vg(vgh)
+            except CommitError:
+                self._destroy_vg(vgh)
+                raise CommitError("Failed to add %s to VolumeGroup." % device)
+        self._close_vg(vgh)
+        vg = VolumeGroup(self, name)
+        return vg
+
+    def remove_vg(self, vg):
+        """
+        Removes a volume group::
 
             from lvm2py import *
 
             lvm = LVM()
             vg = lvm.get_vg("myvg", "w")
+            lvm.remove_vg(vg)
 
         *Args:*
 
-        *       name:   An existing volume group name.
-        *       mode:   "r" or "w" for read/write respectively. Default is "r".
+        *       vg (obj):       A VolumeGroup instance.
+
+        *Raises:*
+
+        *       HandleError,  CommitError
+
+        .. note::
+
+            The VolumeGroup instance must be in write mode, otherwise CommitError
+            is raised.
+        """
+        vg.open()
+        rm = lvm_vg_remove(vg.handle)
+        if rm != 0:
+            vg.close()
+            raise CommitError("Failed to remove VG.")
+        com = lvm_vg_write(vg.handle)
+        if com != 0:
+            vg.close()
+            raise CommitError("Failed to commit changes to disk.")
+        vg.close()
+
+    def vgscan(self):
+        """
+        Probes the system for volume groups and returns a list of VolumeGroup
+        instances::
+
+            from lvm2py import *
+
+            lvm = LVM()
+            vgs = lvm.vgscan()
 
         *Raises:*
 
         *       HandleError
         """
-        vgs, pvs, lvs = self._snapshot()
-        if vgs:
-            self._reset_handle()
-            vg = VolumeGroup(self.handle, new=name)
-            self._restore(vgs, pvs, lvs)
-        else:
-            vg = VolumeGroup(self.handle, new=name)
-        return vg
-
-    @handleDecorator()
-    def remove_vg(self, vg):
-        vgh = vg.handle
-        rm = lvm_vg_remove(vgh)
-        if rm != 0:
-            raise CommitError("Failed to remove VG.")
-        com = lvm_vg_write(vgh)
-        if com != 0:
-            raise CommitError("Failed to commit changes to disk.")
-
-    @handleDecorator()
-    def vgscan(self):
-        lvm_scan(self.handle)
         vg_list = []
-        vgnames = lvm_list_vg_names(self.handle)
-        if dm_list_empty(vgnames):
+        self.open()
+        names = lvm_list_vg_names(self.handle)
+        if not bool(names):
             return vg_list
-        vg = dm_list_first(vgnames)
+        vgnames = []
+        vg = dm_list_first(names)
         while vg:
             c = cast(vg, POINTER(lvm_str_list))
-            vginst = self.get_vg(c.contents.str)
-            vg_list.append(vginst)
-            if dm_list_end(vgnames, vg):
+            vgnames.append(c.contents.str)
+            if dm_list_end(names, vg):
                 # end of linked list
                 break
-            vg = dm_list_next(vgnames, vg)
-        return vg_list
-
-    @handleDecorator()
-    def close(self):
-        vgs = [vg for vg in VolumeGroup.get_instances()]
-        for vg in vgs:
-            try:
-                vg.close()
-            except HandleError:
-                # Probably a duplicate instance with an invalid handle
-                pass
-        q = lvm_quit(self.handle)
-        if q != 0:
-            raise HandleError("Failed to release LVM handle.")
-        self.__handle = None
-
-    def _snapshot(self):
-        vgs = [(vg.name, vg.mode, vg) for vg in VolumeGroup.get_instances()
-                                                if vg.handle is not None]
-        pvs = {}
-        for pv in PhysicalVolume.get_instances():
-            if pv.handle is not None:
-                try:
-                    pvs[pv.vg_name] = pvs[pv.vg_name].append((pv.uuid, pv))
-                except KeyError:
-                    pvs[pv.vg_name] = [(pv.uuid, pv)]
-        lvs = {}
-        for lv in LogicalVolume.get_instances():
-            if lv.handle is not None:
-                try:
-                    lvs[lv.vg_name] = lvs[lv.vg_name].append((lv.uuid, lv))
-                except KeyError:
-                    lvs[lv.vg_name] = [(lv.uuid, lv)]
-        return vgs, pvs, lvs
-
-    def _reset_handle(self):
+            vg = dm_list_next(names, vg)
         self.close()
-        self.__handle = lvm_init(self.system_dir)
-        if not bool(self.__handle):
-            raise HandleError("Failed to initialize LVM handle.")
-
-    def _restore(self, vgs, pvs, lvs):
-        for name, mode, vg in vgs:
-            vgh = lvm_vg_open(self.__handle, name, mode)
-            vg._VolumeGroup__vgh = vgh
-            pvinst = pvs.get(name, [])
-            for uuid, pv in pvinst:
-                pvh = lvm_pv_from_uuid(vgh, uuid)
-                pv._PhysicalVolume__pvh = pvh
-            lvinst = lvs.get(name, [])
-            for uuid, lv in lvinst:
-                lvh = lvm_lv_from_uuid(vgh, uuid)
-                lv._LogicalVolume__lvh = lvh
+        for name in vgnames:
+            vginst = self.get_vg(name)
+            vg_list.append(vginst)
+        return vg_list

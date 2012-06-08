@@ -14,3 +14,6 @@
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
 from .lvm import LVM
+from .vg import VolumeGroup
+from .pv import PhysicalVolume
+from .lv import LogicalVolume

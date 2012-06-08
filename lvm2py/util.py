@@ -1,6 +1,17 @@
-from functools import wraps
-from .exception import HandleError
+#This file is part of lvm2py.
 
+#lvm2py is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#lvm2py is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
 size_units = {
     "B":    1,       # byte
@@ -26,17 +37,3 @@ size_units = {
 def size_convert(bytes, units):
     size =  float(bytes) / size_units[units]
     return size
-
-def handleDecorator():
-    """
-    Wraps methods to check if the given lvm
-    handle is still active.
-    """
-    def wrap(fn):
-        @wraps(fn)
-        def wrapped(self, *args, **kwargs):
-            if self.handle:
-                return fn(self, *args, **kwargs)
-            raise HandleError("Handle is closed for this instance.")
-        return wrapped
-    return wrap

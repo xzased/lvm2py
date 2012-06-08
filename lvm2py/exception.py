@@ -13,18 +13,19 @@
 #You should have received a copy of the GNU General Public License
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
-# Handle exception
 class HandleError(Exception):
-    pass
-
-class CloseError(Exception):
-    pass
-
-class VolumeGroupError(Exception):
-    pass
-
-class LogicalVolumeError(Exception):
+    """
+    Raised when the lvm handle for LVM, VolumeGroup, PhysicalVolume or
+    LogicalVolume is null or for some reason it can't be obtained (bad parameters,
+    duplicate namespaces, etc...)
+    """
     pass
 
 class CommitError(Exception):
+    """
+    Raised when there is an error in committing changes to lvm due to invalid
+    actions such as initiating devices as physical volumes that are already
+    associated to another volume group or trying to perform operations on a
+    read-only volume group.
+    """
     pass
