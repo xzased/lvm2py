@@ -15,7 +15,7 @@ You can download the package from PyPi:
 
     http://pypi.python.org/pypi/lvm2py/
 
-or checkout reparted on github:
+or checkout lvm2py on github:
 
     http://github.com/xzased/lvm2py
 
