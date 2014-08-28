@@ -177,25 +177,28 @@ class LVM(object):
         """
         self.open()
         vgh = lvm_vg_create(self.handle, name)
-        if not bool(vgh):
+        try:
+            if not bool(vgh):
+                self.close()
+                raise HandleError("Failed to create VG.")
+            for device in devices:
+                if not os.path.exists(device):
+                    self._destroy_vg(vgh)
+                    raise ValueError("%s does not exist." % device)
+                ext = lvm_vg_extend(vgh, device)
+                if ext != 0:
+                    self._destroy_vg(vgh)
+                    raise CommitError("Failed to extend Volume Group.")
+                try:
+                    self._commit_vg(vgh)
+                except CommitError:
+                    self._destroy_vg(vgh)
+                    raise CommitError("Failed to add %s to VolumeGroup." % device)
+            vg = VolumeGroup(self, name)
+            return vg
+        finally:
+            self._close_vg(vgh)
             self.close()
-            raise HandleError("Failed to create VG.")
-        for device in devices:
-            if not os.path.exists(device):
-                self._destroy_vg(vgh)
-                raise ValueError("%s does not exist." % device)
-            ext = lvm_vg_extend(vgh, device)
-            if ext != 0:
-                self._destroy_vg(vgh)
-                raise CommitError("Failed to extend Volume Group.")
-            try:
-                self._commit_vg(vgh)
-            except CommitError:
-                self._destroy_vg(vgh)
-                raise CommitError("Failed to add %s to VolumeGroup." % device)
-        self._close_vg(vgh)
-        vg = VolumeGroup(self, name)
-        return vg
 
     def remove_vg(self, vg):
         """
@@ -221,15 +224,17 @@ class LVM(object):
             is raised.
         """
         vg.open()
-        rm = lvm_vg_remove(vg.handle)
-        if rm != 0:
+        try:
+            rm = lvm_vg_remove(vg.handle)
+            if rm != 0:
+                vg.close()
+                raise CommitError("Failed to remove VG.")
+            com = lvm_vg_write(vg.handle)
+            if com != 0:
+                vg.close()
+                raise CommitError("Failed to commit changes to disk.")
+        finally:
             vg.close()
-            raise CommitError("Failed to remove VG.")
-        com = lvm_vg_write(vg.handle)
-        if com != 0:
-            vg.close()
-            raise CommitError("Failed to commit changes to disk.")
-        vg.close()
 
     def vgscan(self):
         """
@@ -247,19 +252,21 @@ class LVM(object):
         """
         vg_list = []
         self.open()
-        names = lvm_list_vg_names(self.handle)
-        if not bool(names):
-            return vg_list
-        vgnames = []
-        vg = dm_list_first(names)
-        while vg:
-            c = cast(vg, POINTER(lvm_str_list))
-            vgnames.append(c.contents.str)
-            if dm_list_end(names, vg):
-                # end of linked list
-                break
-            vg = dm_list_next(names, vg)
-        self.close()
+        try:
+            names = lvm_list_vg_names(self.handle)
+            if not bool(names):
+                return vg_list
+            vgnames = []
+            vg = dm_list_first(names)
+            while vg:
+                c = cast(vg, POINTER(lvm_str_list))
+                vgnames.append(c.contents.str)
+                if dm_list_end(names, vg):
+                    # end of linked list
+                    break
+                vg = dm_list_next(names, vg)
+        finally:
+            self.close()
         for name in vgnames:
             vginst = self.get_vg(name)
             vg_list.append(vginst)

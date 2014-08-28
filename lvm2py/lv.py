@@ -51,11 +51,13 @@ class LogicalVolume(object):
         self.__vg = vg
         if name:
             self.__vg.open()
-            self.__lvh = lvm_lv_from_name(vg.handle, name)
-            if not bool(self.__lvh):
-                raise HandleError("Failed to initialize LV Handle.")
-            self.__uuid = lvm_lv_get_uuid(self.__lvh)
-            self.__vg.close()
+            try:
+                self.__lvh = lvm_lv_from_name(vg.handle, name)
+                if not bool(self.__lvh):
+                    raise HandleError("Failed to initialize LV Handle.")
+                self.__uuid = lvm_lv_get_uuid(self.__lvh)
+            finally:
+                self.__vg.close()
         else:
             self.__lvh = lvh
             if not bool(self.__lvh):
@@ -75,7 +77,10 @@ class LogicalVolume(object):
         self.vg.open()
         self.__lvh = lvm_lv_from_uuid(self.vg.handle, self.uuid)
         if not bool(self.__lvh):
-            raise HandleError("Failed to initialize LV Handle.")
+            try:
+                self.vg.close()
+            finally:
+                raise HandleError("Failed to initialize LV Handle.")
 
     def close(self):
         """

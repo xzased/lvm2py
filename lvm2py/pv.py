@@ -55,11 +55,13 @@ class PhysicalVolume(object):
         self.__vg = vg
         if name:
             self.__vg.open()
-            self.__pvh = lvm_pv_from_name(vg.handle, name)
-            if not bool(self.__pvh):
-                raise HandleError("Failed to initialize PV Handle.")
-            self.__uuid = lvm_pv_get_uuid(self.__pvh)
-            self.__vg.close()
+            try:
+                self.__pvh = lvm_pv_from_name(vg.handle, name)
+                if not bool(self.__pvh):
+                    raise HandleError("Failed to initialize PV Handle.")
+                self.__uuid = lvm_pv_get_uuid(self.__pvh)
+            finally:
+                self.__vg.close()
         else:
             self.__pvh = pvh
             if not bool(self.__pvh):
@@ -79,7 +81,10 @@ class PhysicalVolume(object):
         self.vg.open()
         self.__pvh = lvm_pv_from_uuid(self.vg.handle, self.uuid)
         if not bool(self.__pvh):
-            raise HandleError("Failed to initialize PV Handle.")
+            try:
+                self.vg.close()
+            finally:
+                raise HandleError("Failed to initialize PV Handle.")
 
     def close(self):
         """
