@@ -56,17 +56,14 @@ class VolumeGroup(object):
         # verify we can open this vg in the desired mode
         handle.open()
         vgh = lvm_vg_open(handle.handle, name, mode)
-        try:
-            if not bool(vgh):
-                raise HandleError("Failed to initialize VG Handle.")
-            # Close the handle so we can proceed
-        finally:
-            try:
-                cl = lvm_vg_close(vgh)
-                if cl != 0:
-                    raise HandleError("Failed to close VG handle after init check.")
-            finally:
-                handle.close()
+        if not bool(vgh):
+            handle.close()
+            raise HandleError("Failed to initialize VG Handle.")
+        # Close the handle so we can proceed
+        cl = lvm_vg_close(vgh)
+        if cl != 0:
+            raise HandleError("Failed to close VG handle after init check.")
+        handle.close()
 
     def open(self):
         """
@@ -81,10 +78,7 @@ class VolumeGroup(object):
             self.lvm.open()
             self.__vgh = lvm_vg_open(self.lvm.handle, self.name, self.mode)
             if not bool(self.__vgh):
-                try:
-                    self.lvm.close()
-                finally:
-                    raise HandleError("Failed to initialize VG Handle.")
+                raise HandleError("Failed to initialize VG Handle.")
 
     def close(self):
         """
@@ -302,15 +296,13 @@ class VolumeGroup(object):
         if not os.path.exists(device):
             raise ValueError("%s does not exist." % device)
         self.open()
-        try:
-            ext = lvm_vg_extend(self.handle, device)
-            if ext != 0:
-                self.close()
-                raise CommitError("Failed to extend Volume Group.")
-            self._commit()
-            return PhysicalVolume(self, name=device)
-        finally:
+        ext = lvm_vg_extend(self.handle, device)
+        if ext != 0:
             self.close()
+            raise CommitError("Failed to extend Volume Group.")
+        self._commit()
+        self.close()
+        return PhysicalVolume(self, name=device)
 
     def get_pv(self, device):
         """
@@ -381,14 +373,12 @@ class VolumeGroup(object):
         """
         name = pv.name
         self.open()
-        try:
-            rm = lvm_vg_reduce(self.handle, name)
-            if rm != 0:
-                self.close()
-                raise CommitError("Failed to remove %s." % name)
-            self._commit()
-        finally:
+        rm = lvm_vg_reduce(self.handle, name)
+        if rm != 0:
             self.close()
+            raise CommitError("Failed to remove %s." % name)
+        self._commit()
+        self.close()
 
     def pvscan(self):
         """
@@ -406,23 +396,22 @@ class VolumeGroup(object):
         *       HandleError
         """
         self.open()
-        try:
-            pv_list = []
-            pv_handles = lvm_vg_list_pvs(self.handle)
-            if not bool(pv_handles):
-                return pv_list
-            pvh = dm_list_first(pv_handles)
-            while pvh:
-                c = cast(pvh, POINTER(lvm_pv_list))
-                pv = PhysicalVolume(self, pvh=c.contents.pv)
-                pv_list.append(pv)
-                if dm_list_end(pv_handles, pvh):
-                    # end of linked list
-                    break
-                pvh = dm_list_next(pv_handles, pvh)
-            return pv_list
-        finally:
+        pv_list = []
+        pv_handles = lvm_vg_list_pvs(self.handle)
+        if not bool(pv_handles):
             self.close()
+            return pv_list
+        pvh = dm_list_first(pv_handles)
+        while pvh:
+            c = cast(pvh, POINTER(lvm_pv_list))
+            pv = PhysicalVolume(self, pvh=c.contents.pv)
+            pv_list.append(pv)
+            if dm_list_end(pv_handles, pvh):
+                # end of linked list
+                break
+            pvh = dm_list_next(pv_handles, pvh)
+        self.close()
+        return pv_list
 
     def lvscan(self):
         """
@@ -440,23 +429,22 @@ class VolumeGroup(object):
         *       HandleError
         """
         self.open()
-        try:
-            lv_list = []
-            lv_handles = lvm_vg_list_lvs(self.handle)
-            if not bool(lv_handles):
-                return lv_list
-            lvh = dm_list_first(lv_handles)
-            while lvh:
-                c = cast(lvh, POINTER(lvm_lv_list))
-                lv = LogicalVolume(self, lvh=c.contents.lv)
-                lv_list.append(lv)
-                if dm_list_end(lv_handles, lvh):
-                    # end of linked list
-                    break
-                lvh = dm_list_next(lv_handles, lvh)
-            return lv_list
-        finally:
+        lv_list = []
+        lv_handles = lvm_vg_list_lvs(self.handle)
+        if not bool(lv_handles):
             self.close()
+            return lv_list
+        lvh = dm_list_first(lv_handles)
+        while lvh:
+            c = cast(lvh, POINTER(lvm_lv_list))
+            lv = LogicalVolume(self, lvh=c.contents.lv)
+            lv_list.append(lv)
+            if dm_list_end(lv_handles, lvh):
+                # end of linked list
+                break
+            lvh = dm_list_next(lv_handles, lvh)
+        self.close()
+        return lv_list
 
     def create_lv(self, name, length, units):
         """
@@ -491,15 +479,13 @@ class VolumeGroup(object):
                 raise ValueError("Length not supported.")
             size = (self.size("B") / 100) * length
         self.open()
-        try:
-            lvh = lvm_vg_create_lv_linear(self.handle, name, c_ulonglong(size))
-            if not bool(lvh):
-                self.close()
-                raise CommitError("Failed to create LV.")
-            lv = LogicalVolume(self, lvh=lvh)
-            return lv
-        finally:
+        lvh = lvm_vg_create_lv_linear(self.handle, name, c_ulonglong(size))
+        if not bool(lvh):
             self.close()
+            raise CommitError("Failed to create LV.")
+        lv = LogicalVolume(self, lvh=lvh)
+        self.close()
+        return lv
 
     def remove_lv(self, lv):
         """
