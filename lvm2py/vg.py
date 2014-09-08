@@ -55,15 +55,16 @@ class VolumeGroup(object):
         self.__lvm = handle
         # verify we can open this vg in the desired mode
         handle.open()
-        vgh = lvm_vg_open(handle.handle, name, mode)
-        if not bool(vgh):
+        try:
+            vgh = lvm_vg_open(handle.handle, name, mode)
+            if not bool(vgh):
+                raise HandleError("Failed to initialize VG Handle.")
+            # Close the handle so we can proceed
+            cl = lvm_vg_close(vgh)
+            if cl != 0:
+                raise HandleError("Failed to close VG handle after init check.")
+        finally:
             handle.close()
-            raise HandleError("Failed to initialize VG Handle.")
-        # Close the handle so we can proceed
-        cl = lvm_vg_close(vgh)
-        if cl != 0:
-            raise HandleError("Failed to close VG handle after init check.")
-        handle.close()
 
     def open(self):
         """
