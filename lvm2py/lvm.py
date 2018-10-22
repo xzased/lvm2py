@@ -14,10 +14,10 @@
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
 from ctypes import cast, c_ulonglong, c_ulong
-from conversion import *
-from exception import *
-from util import *
-from vg import VolumeGroup
+from .conversion import *
+from .exception import *
+from .util import *
+from .vg import VolumeGroup
 import os
 
 
