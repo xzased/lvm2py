@@ -13,9 +13,9 @@
 #You should have received a copy of the GNU General Public License
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
-from conversion import *
-from exception import *
-from util import *
+from .conversion import *
+from .exception import *
+from .util import *
 
 
 class LogicalVolume(object):
