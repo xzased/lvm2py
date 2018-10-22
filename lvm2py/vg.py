@@ -15,11 +15,11 @@
 
 from ctypes import cast, c_ulonglong, c_ulong
 import os
-from conversion import *
-from exception import *
-from util import *
-from pv import PhysicalVolume
-from lv import LogicalVolume
+from .conversion import *
+from .exception import *
+from .util import *
+from .pv import PhysicalVolume
+from .lv import LogicalVolume
 
 
 class VolumeGroup(object):
