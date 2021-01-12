@@ -48,15 +48,17 @@ class VolumeGroup(object):
 
         To create a new volume group use the LVM method create_vg.
     """
-    def __init__(self, handle, name, mode="r"):
+    def __init__(self, handle, name, mode=b"r"):
         self.__name = name
         self.__vgh = None
+        if isinstance(mode, str):
+            mode = mode.encode()
         self.__mode = mode
         self.__lvm = handle
         # verify we can open this vg in the desired mode
         handle.open()
         try:
-            vgh = lvm_vg_open(handle.handle, name, mode)
+            vgh = lvm_vg_open(handle.handle, name, self.mode)
             if not bool(vgh):
                 raise HandleError("Failed to initialize VG Handle.")
             # Close the handle so we can proceed
