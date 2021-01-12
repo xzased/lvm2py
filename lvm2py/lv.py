@@ -13,9 +13,9 @@
 #You should have received a copy of the GNU General Public License
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
-from conversion import *
-from exception import *
-from util import *
+from .conversion import *
+from .exception import *
+from .util import *
 
 
 class LogicalVolume(object):
@@ -53,6 +53,7 @@ class LogicalVolume(object):
             self.__vg.open()
             self.__lvh = lvm_lv_from_name(vg.handle, name)
             if not bool(self.__lvh):
+                self.__vg.close()
                 raise HandleError("Failed to initialize LV Handle.")
             self.__uuid = lvm_lv_get_uuid(self.__lvh)
             self.__vg.close()

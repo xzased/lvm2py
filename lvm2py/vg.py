@@ -15,11 +15,11 @@
 
 from ctypes import cast, c_ulonglong, c_ulong
 import os
-from conversion import *
-from exception import *
-from util import *
-from pv import PhysicalVolume
-from lv import LogicalVolume
+from .conversion import *
+from .exception import *
+from .util import *
+from .pv import PhysicalVolume
+from .lv import LogicalVolume
 
 
 class VolumeGroup(object):
@@ -48,21 +48,25 @@ class VolumeGroup(object):
 
         To create a new volume group use the LVM method create_vg.
     """
-    def __init__(self, handle, name, mode="r"):
+    def __init__(self, handle, name, mode=b"r"):
         self.__name = name
         self.__vgh = None
+        if isinstance(mode, str):
+            mode = mode.encode()
         self.__mode = mode
         self.__lvm = handle
         # verify we can open this vg in the desired mode
         handle.open()
-        vgh = lvm_vg_open(handle.handle, name, mode)
-        if not bool(vgh):
-            raise HandleError("Failed to initialize VG Handle.")
-        # Close the handle so we can proceed
-        cl = lvm_vg_close(vgh)
-        if cl != 0:
-            raise HandleError("Failed to close VG handle after init check.")
-        handle.close()
+        try:
+            vgh = lvm_vg_open(handle.handle, name, self.mode)
+            if not bool(vgh):
+                raise HandleError("Failed to initialize VG Handle.")
+            # Close the handle so we can proceed
+            cl = lvm_vg_close(vgh)
+            if cl != 0:
+                raise HandleError("Failed to close VG handle after init check.")
+        finally:
+            handle.close()
 
     def open(self):
         """
@@ -398,6 +402,7 @@ class VolumeGroup(object):
         pv_list = []
         pv_handles = lvm_vg_list_pvs(self.handle)
         if not bool(pv_handles):
+            self.close()
             return pv_list
         pvh = dm_list_first(pv_handles)
         while pvh:
@@ -430,6 +435,7 @@ class VolumeGroup(object):
         lv_list = []
         lv_handles = lvm_vg_list_lvs(self.handle)
         if not bool(lv_handles):
+            self.close()
             return lv_list
         lvh = dm_list_first(lv_handles)
         while lvh:

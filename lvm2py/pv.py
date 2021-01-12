@@ -13,9 +13,9 @@
 #You should have received a copy of the GNU General Public License
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
-from conversion import *
-from exception import *
-from util import *
+from .conversion import *
+from .exception import *
+from .util import *
 
 # Physical volume handling should not be needed anymore. Only physical volumes
 # bound to a vg contain useful information. Therefore the creation,

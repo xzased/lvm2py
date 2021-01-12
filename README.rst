@@ -3,10 +3,11 @@ Introduction
 
 lvm2py is a ctypes based binding for lvm's liblvm2app api. There are some limitations
 to what it can do compared to the command line options available. For example, the 
-resize of Physical and Logical volumes is not implemented in the api yet. Still, 
-contributions are planned in the near future. This is the first release, tested using
-LVM 2.2, please report any bugs or suggestions to my github repo in the links below or 
-by e-mail: rq.sysadmin@gmail.com
+resize of Physical and Logical volumes is not implemented in the api yet.
+
+As of February 2019, there were two people who had forked and patched
+the upstream repo at https://github.com/xzased/lvm2py and this branch
+just combines their minimal changes.
 
 Downloads
 =========

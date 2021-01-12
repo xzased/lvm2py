@@ -14,10 +14,10 @@
 #along with lvm2py. If not, see <http://www.gnu.org/licenses/>.
 
 from ctypes import cast, c_ulonglong, c_ulong
-from conversion import *
-from exception import *
-from util import *
-from vg import VolumeGroup
+from .conversion import *
+from .exception import *
+from .util import *
+from .vg import VolumeGroup
 import os
 
 
@@ -183,18 +183,22 @@ class LVM(object):
         for device in devices:
             if not os.path.exists(device):
                 self._destroy_vg(vgh)
+                self.close()
                 raise ValueError("%s does not exist." % device)
             ext = lvm_vg_extend(vgh, device)
             if ext != 0:
                 self._destroy_vg(vgh)
+                self.close()
                 raise CommitError("Failed to extend Volume Group.")
             try:
                 self._commit_vg(vgh)
             except CommitError:
                 self._destroy_vg(vgh)
+                self.close()
                 raise CommitError("Failed to add %s to VolumeGroup." % device)
         self._close_vg(vgh)
         vg = VolumeGroup(self, name)
+        self.close()
         return vg
 
     def remove_vg(self, vg):
