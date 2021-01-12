@@ -8,5 +8,6 @@ setup(name='lvm2py',
       author='Ruben Quinones',
       author_email='rq.sysadmin@gmail.com',
       url='http://github.com/xzased/lvm2py',
+      python_requires='>=3.5'
       packages=['lvm2py'],
      )
